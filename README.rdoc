@@ -1,6 +1,8 @@
 = zing
 
-Description goes here.
+"Zing Went The Strings Of My Hear" - Sinatra 1960
+
+Is a gem made to eliminate ridiculous time waste in making CMS.
 
 == Contributing to zing
  

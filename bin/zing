@@ -1,0 +1,58 @@
+#! /usr/bin/env ruby
+
+# script to automate creation of cms for a new/old Sinatra project
+require 'ostruct'
+require 'optparse'
+require 'fileutils'
+require 'colorize'
+
+class OptionParser
+
+  def self.parse(args)
+    # The options specified on the command line will be collected in *options*
+    # We set the default value here
+    options = OpenStruct.new
+    options.project_name = nil
+
+    opts = OptionParser.new do |opts|
+      opts.banner = "Usage: zing [options]"
+
+      opts.separator " "
+      opts.separator "Specific options:"
+
+      # mandatory argument project directory
+      opts.on("-p", "--push",
+              "Create a generic push CMS") do |lib|
+        options.push = true
+      end
+
+      opts.on("-m", "--model MODEL_NAME",
+              "Create a generic CMS for MODEL_NAME") do |ver|
+        options.model = ver
+      end
+
+      # No argument, shows at tail. This will print an options summary.
+      # Try it and see!
+      opts.on_tail("-h", "--help", "Show this message") do
+        puts opts
+        exit
+      end
+
+    end
+
+    opts.parse!(args)
+    options
+  end
+
+end
+
+# make sure ARGV has values
+if ARGV.size == 0
+  puts "ERROR: Parameters needed. Run with -h to view options".red
+end
+
+# parse option from command line
+options = OptionParser.parse(ARGV)
+
+puts options.push
+puts options.model

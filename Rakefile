@@ -6,7 +6,7 @@ begin
   Bundler.setup(:default, :development)
 rescue Bundler::BundlerError => e
   $stderr.puts e.message
-  $stderr.puts "Run `bundle install` to install missing gems"
+  $stderr.puts "Run `bundle install --path vendor/bundle` to install missing gems"
   exit e.status_code
 end
 require 'rake'
@@ -17,10 +17,11 @@ Jeweler::Tasks.new do |gem|
   gem.name = "zing"
   gem.homepage = "http://github.com/schandra/zing"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{Zing is a cms generator for Sinatra}
+  gem.description = %Q{This gem will create a barebone cms from a new or existing Sinatra project}
   gem.email = "samuelchandra@yahoo.com"
   gem.authors = ["Samuel Chandra"]
+  gem.executables = ["zing"]
   # dependencies defined in Gemfile
 end
 Jeweler::RubygemsDotOrgTasks.new
