@@ -20,29 +20,88 @@ class OptionParser
       opts.separator " "
       opts.separator "Specific options:"
 
-      # mandatory argument project directory
+      opts.on("-b", "--base",
+              "Zing base CMS") do |lib|
+        options.base = true
+      end
+
       opts.on("-p", "--push",
-              "Create a generic push CMS") do |lib|
+              "Zing push module on top of base CMS") do |lib|
         options.push = true
       end
 
       opts.on("-m", "--model MODEL_NAME",
-              "Create a generic CMS for MODEL_NAME") do |ver|
-        options.model = ver
+              "Zing CRUD for individual MODEL_NAME, use commas for multiple models") do |ver|
+        if ver.split(",").class == Array
+          options.model = ver.split(",").map(&:strip)
+        elsif ver.class == String
+          options.model = var
+        else
+          options.model = nil
+        end
       end
 
       # No argument, shows at tail. This will print an options summary.
       # Try it and see!
       opts.on_tail("-h", "--help", "Show this message") do
         puts opts
-        exit
+        exit!
       end
 
     end
 
     opts.parse!(args)
     options
+
+  rescue Exception => e
+    if e.message.match(/invalid option/i) or e.message.match(/missing argument/i)
+      puts "ERROR: #{e.message}".red
+      puts ""
+      puts opts
+    end
+    exit!
   end
+
+end
+
+class ZingHelper
+  
+  def self.create_directory(dir_path)
+    if File.exist?(dir_path)
+      puts "exists #{dir_path}"
+    else
+      FileUtils.mkdir_p(dir_path)
+      puts "create".green + " #{dir_path}"
+    end
+  end
+
+  def self.create_file(file_path, file_content)
+    if File.exist?(file_path)
+      puts "exists #{file_path}"
+    else
+      File.open("#{file_path}", "w") do |file|
+        file.puts file_content
+      end
+      puts "create".green + " #{file_path}"
+    end
+  end
+
+  def self.connect_db(models_file_path)
+    if File.exist?(models_file_path)
+      # check if db connection can be made
+      require models_file_path
+      if ActiveRecord::Base.connection and ActiveRecord::Base.connected?
+        puts "passed".green + " Database Connection"
+      else
+        puts "errors".red + " Database Connection not exist"
+        exit!
+      end
+    else
+      puts "ERROR: Are you sure DB is properly configured in #{models_file_path}?".red
+      exit!
+    end
+  end
+
 
 end
 
@@ -54,5 +113,462 @@ end
 # parse option from command line
 options = OptionParser.parse(ARGV)
 
-puts options.push
-puts options.model
+# working directory
+project_absolute_dir = FileUtils.pwd
+app_name             = project_absolute_dir.split("/").last
+
+models_directory = project_absolute_dir + "/models"
+views_directory  = project_absolute_dir + "/views"
+routes_directory = project_absolute_dir + "/routes"
+push_directory   = project_absolute_dir + "/push"
+scss_directory   = project_absolute_dir + "/public/sass"
+
+# check if config.ru and app_name.rb exist
+unless File.exist?(project_absolute_dir + "/config.ru") and 
+  File.exist?(project_absolute_dir + "/#{app_name}.rb")
+  puts "ERROR: Are you in the project directory before trying to Zing?".red
+  exit!
+end
+
+# Base
+#
+# This will be the base CMS, the rest will not function without this
+if options.base
+
+  # run compass create to setup blueprint and stuff
+  compass_create_result = system("compass create --sass-dir public/sass --css-dir public/stylesheets --images-dir public/images --javascripts-dir public/javascripts --using blueprint/semantic")
+  if compass_create_result
+    puts "passed".green + " compass create"
+  else
+    puts "failed".red + " compass create"
+    exit!
+  end
+
+  # copy cms images from gem to the app images folder
+  
+
+  # check if database config exist and connection successful
+  ZingHelper.connect_db(project_absolute_dir + "/models.rb")
+
+  # create AdminUser table 
+  if ActiveRecord::Base.connection.table_exists?(:admin_users)
+    puts "exists AdminUser Table"
+  else
+     ActiveRecord::Base.connection.create_table :admin_users do |t|
+       t.string :username, :limit => 40, :null => false
+       t.string :password, :limit => 40
+       t.integer :utime, :limit => 16
+       t.timestamps
+    end
+    if ActiveRecord::Base.connection.table_exists?(:admin_users)
+      puts "passed".green + " AdminUser Table Creation"
+    else
+      puts "failed".red + " AdminUser Table Creation"
+      exit!
+    end
+  end
+
+  # create AdminUser model 
+  admin_user_content = <<-admin_user_content
+class AdminUser < ActiveRecord::Base
+end
+  admin_user_content
+  ZingHelper.create_file("#{models_directory}/admin_user.rb", admin_user_content)
+
+  # create cms routes 
+  cms_content = <<-cms_content
+class Cms < Sinatra::Base
+
+  get '/cms' do
+    if session[:authorized] 
+      redirect '/cms/menu'
+    else
+      redirect '/cms/login'
+    end
+  end
+
+  get '/cms/login' do
+    haml :login, :layout => false
+  end
+
+  post '/cms/login' do
+    if params[:username] && params[:password]
+      admin_users = AdminUser.find_all_by_username_and_password(params[:username], params[:password])
+      if admin_users.size > 0 
+        session[:authorized] = true 
+        redirect '/cms/menu'
+      end
+    end
+
+    redirect '/cms/login'
+  end
+
+  get '/cms/menu' do
+    
+    haml :menu
+  end
+
+end
+  cms_content
+  ZingHelper.create_file("#{routes_directory}/cms.rb", cms_content)
+
+  # create application.scss
+  application_scss_content = <<-application_scss_content
+@import "compass";
+@import "blueprint";
+
+@import "partials/base";
+@import "partials/page";
+@import "partials/form";
+
+.top_wrapper {
+  background: white url('../images/background-v2.png') 0 0 repeat-x;
+}
+
+.footer_wrapper {
+  background: url('../images/bg_footer_top.png') #F8F8F8 repeat-x;
+}
+
+.bottom_wrapper {
+  background: url('../images/bg_footer_bottom.png') white repeat-x;
+  height: 40px;
+}
+
+#main{
+  @include container;
+
+  #header {
+    @include column(24);
+    height: 91px;
+
+    .logo {
+      @include column(11);
+      @include prepend(1);
+      display:block;
+      position:relative;
+      top: 16px;
+    }   
+
+    .topnav {
+      @include column(11);
+      @include append(1);
+      text-align: right;
+      display:block;
+      position:relative;
+
+    }   
+  }
+
+  #content{
+    @include column(22);
+    @include append(1);
+    @include prepend(1);
+    @include prepend-top(-20px);
+    @include append-bottom(10px);
+    background: url('../images/background-white.png') 0 0 no-repeat;
+    // @include column-grid-background;
+        
+    #login {
+      @include prepend-top(70px);
+      @include append-bottom(60px);
+      @include column(10);
+      @include prepend(7);
+      @include append(7);
+
+    }   
+
+  }
+
+}
+
+#footer{
+  @include container;
+
+  #upper_footer {
+    @include column(24);
+    overflow: hidden;
+    height: 60px;
+
+    .copyright{
+      @include column(15); 
+      text-align: right;
+      display:block;
+      position:relative;
+      top: 25px;
+    }
+
+    .bottom_logo {
+      @include column(8, true);
+      @include append(1);
+      text-align: right;
+      display:block;
+      position:relative;
+      top: 14px;
+
+      h1 {
+        color:rgb(219, 220, 221);
+      }
+    }
+
+  }
+
+  #lower_footer {
+
+  }
+
+}
+  application_scss_content
+  ZingHelper.create_file("#{scss_directory}/application.scss", application_scss_content)
+
+  # create login.haml
+  login_haml_content = <<-login_haml_content
+!!! 5
+%html
+  %head
+    %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end 
+    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
+    %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
+    %link{:href => "/stylesheets/screen.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+    %link{:href => "/stylesheets/print.css", :media => "print", :rel => "stylesheet", :type => "text/css"}
+    /[if lt IE 8]
+      %link{:href => "/stylesheets/ie.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+    %link{:href => "/stylesheets/application.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+
+  %body.bp
+    .top_wrapper
+      #main
+        #header
+          .logo
+            %h1 
+              = $APP_NAME + " CMS"
+
+        #content
+          %form#login.bp{:action => "/cms/login", :method => "post"}
+            %fieldset
+              %legend Login
+              %p  
+                %label{:for => "username"} Username
+                %br 
+                  %input#username.title{:name => "username", :type => "text", :value => ""} 
+              %p  
+                %label{:for => "password"} Password
+                %br 
+                  %input#password.title{:name => "password", :type => "password", :value => ""} 
+              %p  
+                %input{:type => "submit", :value => "Submit"}
+
+    .footer_wrapper
+      #footer
+        #upper_footer
+          .copyright
+            = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
+
+          .bottom_logo
+            %h1 
+              = $APP_NAME + " CMS"
+
+        #lower_footer
+
+    .bottom_wrapper
+  login_haml_content
+  ZingHelper.create_file("#{views_directory}/login.haml", login_haml_content)
+
+  # create layout.haml
+  layout_haml_content = <<-layout_haml_content
+!!! 5
+%html
+  %head
+    %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end
+    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
+    %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
+    %link{:href => "/stylesheets/screen.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+    %link{:href => "/stylesheets/print.css", :media => "print", :rel => "stylesheet", :type => "text/css"}
+    /[if lt IE 8]
+      %link{:href => "/stylesheets/ie.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+    %link{:href => "/stylesheets/application.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+
+  %body.bp
+    .top_wrapper
+      #main
+        #header
+          .logo
+            %h1
+              = $APP_NAME + " CMS"
+
+        #content
+          = yield
+
+    .footer_wrapper
+      #footer
+        #upper_footer
+          .copyright
+            = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
+
+          .bottom_logo
+            %h1
+              = $APP_NAME + " CMS"
+
+        #lower_footer
+
+    .bottom_wrapper
+  layout_haml_content
+  ZingHelper.create_file("#{views_directory}/layout.haml", layout_haml_content)
+
+end
+
+# PUSH
+#
+# create push folder if not exist
+if options.push
+
+  puts "Zinging push CMS"
+  ZingHelper.create_directory(push_directory)
+
+  # check if database config exist and connection successful
+  ZingHelper.connect_db(project_absolute_dir + "/models.rb")
+
+  # create Token table 
+  if ActiveRecord::Base.connection.table_exists?(:tokens)
+    puts "exists Token Table"
+  else
+     ActiveRecord::Base.connection.create_table :tokens do |t|
+       t.string :udid, :limit => 40, :null => false
+       t.string :owner, :limit => 40
+       t.string :token, :limit => 128, :null => false
+       t.boolean :buuuk, :default => 0
+       t.boolean :valid_udid, :default => 1
+       t.string :carrier
+       t.integer :utime, :limit => 16
+       t.string :network_code, :limit => 12
+       t.string :country_code, :limit => 12
+       t.string :device, :limit => 32
+       t.string :country
+       t.string :version, :limit => 16
+       t.timestamps
+    end
+    if ActiveRecord::Base.connection.table_exists?(:tokens)
+      puts "passed".green + " Token Table Creation"
+    else
+      puts "failed".red + " Token Table Creation"
+      exit!
+    end
+  end
+
+  # create Notification table
+  if ActiveRecord::Base.connection.table_exists?(:notifications)
+    puts "exists Notification Table"
+  else
+     ActiveRecord::Base.connection.create_table :notifications do |t|
+       t.string :message
+       t.string :btn_name, :limit => 64
+       t.string :sound, :limit => 64
+       t.string :url
+       t.string :category, :limit => 64
+       t.string :carrier, :limit => 64
+       t.string :test_udids, :limit => 512
+       t.integer :utime, :limit => 16
+       t.timestamps
+    end
+    if ActiveRecord::Base.connection.table_exists?(:notifications)
+      puts "passed".green + " Notification Table Creation"
+    else
+      puts "failed".red + " Notification Table Creation"
+      exit!
+    end
+  end
+
+  # create ApnLog table
+  if ActiveRecord::Base.connection.table_exists?(:apn_logs)
+    puts "exists ApnLog Table"
+  else
+     ActiveRecord::Base.connection.create_table :apn_logs do |t|
+       t.integer :notification_id
+       t.integer :notification_size, :limit => 16
+       t.text    :log_text
+       t.integer :utime, :limit => 16
+       t.timestamps
+    end
+    if ActiveRecord::Base.connection.table_exists?(:apn_logs)
+      puts "passed".green + " ApnLog Table Creation"
+    else
+      puts "failed".red + " ApnLog Table Creation"
+      exit!
+    end
+  end
+
+  # create Token model
+  token_content = <<-token_class
+class Token < ActiveRecord::Base
+end
+  token_class
+  ZingHelper.create_file("#{models_directory}/token.rb", token_content)
+
+  # create Notification model
+  notification_content = <<-notification_class
+class Notification < ActiveRecord::Base
+end
+  notification_class
+  ZingHelper.create_file("#{models_directory}/notification.rb", notification_content)
+
+  # create ApnLog model
+  apn_log_content = <<-apn_log_class
+class ApnLog < ActiveRecord::Base
+end
+  apn_log_class
+  ZingHelper.create_file("#{models_directory}/apn_log.rb", apn_log_content)
+
+  # create the Push class
+  push_class_content = <<-push_class
+gem "apns", "=0.9.0"
+require "apns"
+
+class Push
+    
+  def self.push_new_alert(notification, token_array)
+
+    notification_id = notification.id
+    message         = notification.message
+    button_name     = notification.btn_name
+    sound           = notification.sound
+    url             = notification.url
+    test_udids      = notification.test_udids
+
+    # apn setting
+    APNS.host = "gateway.push.apple.com"
+    APNS.pem  = "#{app_name}_push_certificate.pem"
+
+    # always overide token_array if test udids exist
+    if token_array.size > 0 and test_udids and test_udids.size > 0 
+      token_array = Token.find_all_by_udid(test_udids).map(&:token).compact
+    end 
+
+    apn_notifications = []    
+    if token_array.size > 0    
+      token_array.each do |token|  
+        apn_notifications << APNS::Notification.new(
+          token, 
+          :alert => {:body => message,"action-loc-key" => button_name}, 
+          :sound => sound, 
+          :other => {:url => url}
+        ) 
+      end     
+
+      APNS.send_notifications(apn_notifications)
+
+      # Log the push
+      ApnLog.create(
+        :notification_id => notification_id, 
+        :log_text        => apn_notifications.inspect, 
+        :utime           => Time.now.to_i
+      )
+    end 
+    
+  end 
+
+end
+  push_class
+  ZingHelper.create_file("#{push_directory}/push.rb", push_class_content)
+
+  # completion
+  puts "Dont forget to place your '".yellow + "#{app_name}_push_certificate.pem".red + "' file in '".yellow + "/push".red + "' folder".yellow
+end

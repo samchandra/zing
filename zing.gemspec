@@ -20,13 +20,16 @@ Gem::Specification.new do |s|
   s.files = [
     ".document",
     "Gemfile",
+    "Gemfile.lock",
     "LICENSE.txt",
     "README.rdoc",
     "Rakefile",
     "VERSION",
+    "bin/zing",
     "lib/zing.rb",
     "test/helper.rb",
-    "test/test_zing.rb"
+    "test/test_zing.rb",
+    "zing.gemspec"
   ]
   s.homepage = "http://github.com/schandra/zing"
   s.licenses = ["MIT"]
