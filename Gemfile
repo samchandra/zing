@@ -3,7 +3,6 @@ source "http://rubygems.org"
 # Example:
 #   gem "activesupport", ">= 2.3.5"
 gem "colorize"
-gem "bundler", "~>1.0.0"
 gem "compass"
 
 # Add dependencies to develop your gem here.
