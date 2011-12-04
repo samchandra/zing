@@ -2,7 +2,22 @@
 
 "Zing Went The Strings Of My Heart" - Sinatra 1960
 
-Is a gem made to eliminate ridiculous time waste in making CMS.
+Is a gem made to eliminate time waste in writing common code in a new or existing Sinatra project.
+
+== Usage
+
+It is best to use zing with dindi created project.  Take a look at dindi gem.
+
+To view zing options:
+
+    zing -h
+
+Create a base CMS:
+  
+    zing -b
+
+You might need to make sure that your models.rb is in the project root folder and it contains your 
+database setting.  After running the command, please make sure to include the new route in config.ru.
 
 == Contributing to zing
  

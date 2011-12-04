@@ -17,8 +17,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "zing"
   gem.homepage = "http://github.com/schandra/zing"
   gem.license = "MIT"
-  gem.summary = %Q{Zing is a cms generator for Sinatra}
-  gem.description = %Q{This gem will create a barebone cms from a new or existing Sinatra project}
+  gem.summary = %Q{Zing is Sinatra code generator}
+  gem.description = %Q{This gem will generate common code for a new or existing Sinatra project}
   gem.email = "samuelchandra@yahoo.com"
   gem.authors = ["Samuel Chandra"]
   gem.executables = ["zing"]
