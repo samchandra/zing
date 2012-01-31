@@ -284,7 +284,7 @@ end
 
       .footer
         %p
-          = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
+          = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s
 
   layout_haml_content
   ZingHelper.create_file("#{views_directory}/layout.haml", layout_haml_content)
