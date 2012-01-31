@@ -122,7 +122,10 @@ views_directory   = project_absolute_dir + "/views"
 routes_directory  = project_absolute_dir + "/routes"
 push_directory    = project_absolute_dir + "/push"
 helpers_directory = project_absolute_dir + "/helpers"
+
 scss_directory    = project_absolute_dir + "/public/sass"
+
+css_directory     = project_absolute_dir + "/public/css"
 images_directory  = project_absolute_dir + "/public/images"
 
 # check if config.ru and app_name.rb exist
@@ -137,18 +140,9 @@ end
 # This will be the base CMS, the rest will not function without this
 if options.base
 
-  # run compass create to setup blueprint and stuff
-  compass_create_result = system("compass create --sass-dir public/sass --css-dir public/stylesheets --images-dir public/images --javascripts-dir public/javascripts --using blueprint/semantic")
-  if compass_create_result
-    puts "passed".green + " compass create"
-  else
-    puts "failed".red + " compass create"
-    exit!
-  end
-
-  # copy cms images from gem to the app images folder
+  # copy cms images from gem to the app images directory
   zing_images = `gem contents zing`.split("\n").select {|e| e.match(/\.png/i)}
-  FileUtils.cp zing_images,images_directory
+  FileUtils.cp zing_images, images_directory
 
   # check if database config exist and connection successful
   ZingHelper.connect_db(project_absolute_dir + "/models.rb")
@@ -214,124 +208,6 @@ end
   cms_content
   ZingHelper.create_file("#{routes_directory}/cms.rb", cms_content)
 
-  # create application.scss
-  application_scss_content = <<-application_scss_content
-@import "compass";
-@import "blueprint";
-
-@import "partials/base";
-@import "partials/page";
-@import "partials/form";
-
-.top_wrapper {
-  background: white url('../images/background-v2.png') 0 0 repeat-x;
-}
-
-.footer_wrapper {
-  background: url('../images/bg_footer_top.png') #F8F8F8 repeat-x;
-}
-
-.bottom_wrapper {
-  background: url('../images/bg_footer_bottom.png') white repeat-x;
-  height: 40px;
-}
-
-#main{
-  @include container;
-
-  #header {
-    @include column(24);
-    height: 91px;
-
-    .logo {
-      @include column(11);
-      @include prepend(1);
-      display:block;
-      position:relative;
-      top: 16px;
-    }   
-
-    .topnav {
-      @include column(11);
-      @include append(1);
-      text-align: right;
-      display:block;
-      position:relative;
-
-    }   
-  }
-
-  #content{
-    @include column(22);
-    @include append(1);
-    @include prepend(1);
-    @include prepend-top(-20px);
-    @include append-bottom(10px);
-    background: url('../images/background-white.png') 0 0 no-repeat;
-    // @include column-grid-background;
-        
-    #login {
-      @include prepend-top(70px);
-      @include append-bottom(60px);
-      @include column(10);
-      @include prepend(7);
-      @include append(7);
-    }   
-
-    #page_title {
-      @include prepend-top(20px);
-      @include column(22);
-      // @include column-grid-background;
-    }
-
-    #page_content {
-      @include column(22);
-      // @include column-grid-background;
-    }
-
-  }
-
-}
-
-#footer{
-  @include container;
-
-  #upper_footer {
-    @include column(24);
-    overflow: hidden;
-    height: 60px;
-
-    .copyright{
-      @include column(15); 
-      text-align: right;
-      display:block;
-      position:relative;
-      top: 25px;
-    }
-
-    .bottom_logo {
-      @include column(7, true);
-      @include append(1);
-      text-align: right;
-      display:block;
-      position:relative;
-      top: 14px;
-
-      h1 {
-        color:rgb(219, 220, 221);
-      }
-    }
-
-  }
-
-  #lower_footer {
-
-  }
-
-}
-  application_scss_content
-  ZingHelper.create_file("#{scss_directory}/application.scss", application_scss_content)
-
   # create login.haml
   login_haml_content = <<-login_haml_content
 !!! 5
@@ -340,48 +216,36 @@ end
     %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end 
     %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
     %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
-    %link{:href => "/stylesheets/screen.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
-    %link{:href => "/stylesheets/print.css", :media => "print", :rel => "stylesheet", :type => "text/css"}
-    /[if lt IE 8]
-      %link{:href => "/stylesheets/ie.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
-    %link{:href => "/stylesheets/application.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "sytlesheet", :type => "text/css"}
 
-  %body.bp
-    .top_wrapper
-      #main
-        #header
-          .logo
-            %h1 
-              = $APP_NAME + " CMS"
+  %body
+  
+    .topbar
+      .fill
+        .container
+          %a.brand{:href=>"#"}
+            = $APP_NAME + " CMS"
+          %ul.nav
+            %li.active
+              %a{:href => "#"}Home
+            %li
+              %a{:href => "#about"}About
+            %li
+              %a{:href => "#contact"}Contact
+          %form.pull-right{:action => "/cms/login", :method => "post"}
+            %input.input-small{:type => "text", :placeholder => "Username"}
+            %input.input-small{:type => "text", :placeholder => "Password"}
+            %button.btn{:type => "submit"}Sign in
 
-        #content
-          %form#login.bp{:action => "/cms/login", :method => "post"}
-            %fieldset
-              %legend Login
-              %p  
-                %label{:for => "username"} Username
-                %br 
-                  %input#username.title{:name => "username", :type => "text", :value => ""} 
-              %p  
-                %label{:for => "password"} Password
-                %br 
-                  %input#password.title{:name => "password", :type => "password", :value => ""} 
-              %p  
-                %input{:type => "submit", :value => "Submit"}
+    .container
+      .hero-unit
+        %h1 CMS
+        %p App CMS
 
-    .footer_wrapper
-      #footer
-        #upper_footer
-          .copyright
-            = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
+      .footer
+        %p
+          = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
 
-          .bottom_logo
-            %h1 
-              = $APP_NAME + " CMS"
-
-        #lower_footer
-
-    .bottom_wrapper
   login_haml_content
   ZingHelper.create_file("#{views_directory}/login.haml", login_haml_content)
 
@@ -393,44 +257,35 @@ end
     %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end
     %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
     %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
-    %link{:href => "/stylesheets/screen.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
-    %link{:href => "/stylesheets/print.css", :media => "print", :rel => "stylesheet", :type => "text/css"}
-    /[if lt IE 8]
-      %link{:href => "/stylesheets/ie.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
-    %link{:href => "/stylesheets/application.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css"}
+    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "sytlesheet", :type => "text/css"}
 
-  %body.bp
-    .top_wrapper
-      #main
-        #header
-          .logo
-            %h1
-              = $APP_NAME + " CMS"
+  %body
 
-        #content
-          #page_title
-            %h2
-              = @page_title
+    .topbar
+      .fill
+        .container
+          %a.brand{:href=>"#"}
+            = $APP_NAME + " CMS"
+          %ul.nav
+            %li.active
+              %a{:href => "#"}Home
+            %li
+              %a{:href => "#about"}About
+            %li
+              %a{:href => "#contact"}Contact
+          %form.pull-right{:action => "/cms/login", :method => "post"}
+            %input.input-small{:type => "text", :placeholder => "Username"}
+            %input.input-small{:type => "text", :placeholder => "Password"}
+            %button.btn{:type => "submit"}Sign in
 
-          #page_nav
-            = page_navigation(@page_title) if respond_to? "page_navigation"
+    .container
+      .content
+        = yield
 
-          #page_content
-            = yield
+      .footer
+        %p
+          = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
 
-    .footer_wrapper
-      #footer
-        #upper_footer
-          .copyright
-            = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
-
-          .bottom_logo
-            %h1
-              = $APP_NAME + " CMS"
-
-        #lower_footer
-
-    .bottom_wrapper
   layout_haml_content
   ZingHelper.create_file("#{views_directory}/layout.haml", layout_haml_content)
 
@@ -440,35 +295,6 @@ end
   dashboard_haml_content
   ZingHelper.create_file("#{views_directory}/dashboard.haml", dashboard_haml_content)
 
-  # add View Partial
-  # check if helpers folder exist
-  ZingHelper.create_directory(helpers_directory)
-
-  view_partial_content = <<-view_partial_content
-module ViewPartial
-  def page_navigation(current_page)
-    haml :page_navigation
-  end
-end
-  view_partial_content
-  ZingHelper.create_file("#{helpers_directory}/view_partial.rb", view_partial_content)
-
-  # page_navigation.haml
-  page_navigation_haml = <<-page_navigation_haml
-%p
-  %ul
-    %li page_navigation
-  page_navigation_haml
-  ZingHelper.create_file("#{views_directory}/page_navigation.haml", page_navigation_haml)
-
-  # compass compile scss
-  compass_compile_result = system("compass compile") 
-  if compass_compile_result
-    puts "passed".green + " compass compile"
-  else
-    puts "failed".red + " compass compile"
-    exit!
-  end
 end
 
 # PUSH
