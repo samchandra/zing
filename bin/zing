@@ -185,6 +185,11 @@ class Cms < Sinatra::Base
   end
 
   get '/cms/login' do
+    image_array = ["http://www.buuuk.com/wp-content/uploads/2011/08/ST_bannerNEW.png",
+                   "http://www.buuuk.com/wp-content/uploads/2011/04/weatherlah-banner2d.png",
+                   "http://www.buuuk.com/wp-content/uploads/2011/04/buUuk-banner_New2.png"]
+    @main_image = image_array[rand(3)]
+
     haml :login, :layout => false
   end
 
@@ -197,6 +202,11 @@ class Cms < Sinatra::Base
       end
     end
 
+    redirect '/cms/login'
+  end
+
+  get '/cms/logout' do
+    session[:authorized] = false
     redirect '/cms/login'
   end
 
@@ -216,7 +226,15 @@ end
     %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end 
     %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
     %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
-    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "sytlesheet", :type => "text/css"}
+    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "stylesheet", :type => "text/css"}
+    :css
+      body {
+        padding-top: 60px;
+      }
+      .hero-unit {
+        padding: 0;
+        margin-bottom: 10px;
+      }
 
   %body
   
@@ -225,26 +243,39 @@ end
         .container
           %a.brand{:href=>"#"}
             = $APP_NAME + " CMS"
-          %ul.nav
-            %li.active
-              %a{:href => "#"}Home
-            %li
-              %a{:href => "#about"}About
-            %li
-              %a{:href => "#contact"}Contact
+
           %form.pull-right{:action => "/cms/login", :method => "post"}
-            %input.input-small{:type => "text", :placeholder => "Username"}
-            %input.input-small{:type => "text", :placeholder => "Password"}
+            %input.input-small{:name => "username", :type => "text", :placeholder => "Username"}
+            %input.input-small{:name => "password", :type => "password", :placeholder => "Password"}
             %button.btn{:type => "submit"}Sign in
 
     .container
       .hero-unit
-        %h1 CMS
-        %p App CMS
+        %img{:src => @main_image}
 
-      .footer
+      .row
+        .span16
+          %h2 We build custom mobile applications
+          %p
+            We help our clients create mobile applications. Our focus is on building apps that deliver real-time, contextually relevant information to mobile touch screens. We are experts in using location, augmented reality and push notification. We don't out-source. 
+      .row
+        .span4{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/iPhone4Both1.png", :width => "200px", :height => "376px"}
+        .span4{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/Samsung_Nexus_S_FTKAKI.png", :width => "187px", :height => "344px"}
+        .span4{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/Blackberry-AMEXmerchantfind3.png", :width => "230px", :height => "363px"}
+        .span4{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/windows_buuuk2.png", :width => "200px", :height => "362px"}
+
+      .row
+        .span16
+          %h2 Platforms
+          %p From iPhone/iPad, to Android, to BlackBerry, to Windows 7: our portfolio of products is testament to our expertise across multiple platforms. Our services extend beyond just developing apps. We can provide a complete infrastructure for deployment, content management and hosting.
+
+      %footer
         %p
-          = "All rights reserved. &copy; " + Time.now.year.to_s + " " + $APP_NAME + "."
+          = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s
 
   login_haml_content
   ZingHelper.create_file("#{views_directory}/login.haml", login_haml_content)
@@ -252,42 +283,55 @@ end
   # create layout.haml
   layout_haml_content = <<-layout_haml_content
 !!! 5
-%html
+%html 
   %head
     %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end
-    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
+    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"} 
     %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
-    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "sytlesheet", :type => "text/css"}
+    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "stylesheet", :type => "text/css"}
+    :css
+      body {
+        padding-top: 60px;
+      }
 
   %body
 
     .topbar
-      .fill
-        .container
-          %a.brand{:href=>"#"}
-            = $APP_NAME + " CMS"
+      .topbar-inner
+        .container-fluid
+          %a.brand{:href=>"/"}
+            = $APP_NAME + " CMS"            
           %ul.nav
             %li.active
-              %a{:href => "#"}Home
-            %li
-              %a{:href => "#about"}About
-            %li
-              %a{:href => "#contact"}Contact
-          %form.pull-right{:action => "/cms/login", :method => "post"}
-            %input.input-small{:type => "text", :placeholder => "Username"}
-            %input.input-small{:type => "text", :placeholder => "Password"}
-            %button.btn{:type => "submit"}Sign in
+              %a{:href => "/cms/dashboard"}Dashboard
+          %p.pull-right
+            %a{:href => "/cms/logout"}Logout
 
-    .container
+    .container-fluid
+      .sidebar
+        .well
+          = haml :sidebar
+
       .content
         = yield
 
-      .footer
-        %p
-          = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s
+        %footer
+          %p
+            = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s
 
   layout_haml_content
   ZingHelper.create_file("#{views_directory}/layout.haml", layout_haml_content)
+
+  sidbar_haml_content = <<-sidebar_haml_content
+%h5 
+  CMS Modules
+  %ul
+    %li 
+      %a{:href => "#"}Push Notification
+    %li
+      %a{:href => "#"}Collection Items
+  sidebar_haml_content
+  ZingHelper.create_file("#{views_directory}/sidebar.haml", sidebar_haml_content)
 
   dashboard_haml_content = <<-dashboard_haml_content
 %p
