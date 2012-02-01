@@ -322,7 +322,7 @@ end
   layout_haml_content
   ZingHelper.create_file("#{views_directory}/layout.haml", layout_haml_content)
 
-  sidbar_haml_content = <<-sidebar_haml_content
+  sidebar_haml_content = <<-sidebar_haml_content
 %h5 
   CMS Modules
   %ul
