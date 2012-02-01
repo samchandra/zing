@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "zing"
-  s.version = "0.2.0"
+  s.version = "0.2.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Samuel Chandra"]
-  s.date = "2012-01-31"
+  s.date = "2012-02-01"
   s.description = "This gem will generate common code for a new or existing Sinatra project"
   s.email = "samuelchandra@yahoo.com"
   s.executables = ["zing"]
