@@ -1,0 +1,45 @@
+!!! 5
+%html                          
+  %head
+    %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end
+    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"} 
+    %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
+    %link{:href => "http://twitter.github.com/bootstrap/assets/css/bootstrap.css", :rel => "stylesheet", :type => "text/css"}
+    :css
+      body {                           
+        padding-top: 60px;     
+        padding-bottom: 40px;  
+      }                        
+
+      .sidebar-nav {           
+        padding: 9px 0;
+      }
+
+
+  %body
+    .navbar.navbar-fixed-top
+      .navbar-inner            
+        .container-fluid       
+          %a.brand{:href=>"/"}
+            = $APP_NAME + " CMS"
+          .nav-collapse
+            %ul.nav              
+              %li
+                %a{:href => "/cms/dashboard"}Dashboard
+            %p.navbar-text.pull-right        
+              %a{:href => "/cms/logout"}Logout
+
+    .container-fluid           
+      .row-fluid
+        .span3
+          .well.sidebar-nav
+            = haml :"sidebar", :layout => false
+
+        .span9
+          = yield
+
+      %hr
+
+      %footer
+        %p
+          = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s

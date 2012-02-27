@@ -1,0 +1,41 @@
+class Cms < Sinatra::Base
+
+  get '/cms' do
+    if session[:authorized] 
+      redirect '/cms/dashboard'
+    else
+      redirect '/cms/login'
+    end
+  end
+
+  get '/cms/login' do
+    image_array = ["http://www.buuuk.com/wp-content/uploads/2011/08/ST_bannerNEW.png",
+                   "http://www.buuuk.com/wp-content/uploads/2011/04/weatherlah-banner2d.png",
+                   "http://www.buuuk.com/wp-content/uploads/2011/04/buUuk-banner_New2.png"]
+    @main_image = image_array[rand(3)]
+
+    haml :login, :layout => false
+  end
+
+  post '/cms/login' do
+    if params[:username] && params[:password]
+      admin_users = AdminUser.find_all_by_username_and_password(params[:username], params[:password])
+      if admin_users.size > 0 
+        session[:authorized] = true 
+        redirect '/cms/dashboard'
+      end
+    end
+
+    redirect '/cms/login'
+  end
+
+  get '/cms/logout' do
+    session[:authorized] = false
+    redirect '/cms/login'
+  end
+
+  get '/cms/dashboard' do
+    haml :dashboard
+  end
+
+end

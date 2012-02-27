@@ -1,0 +1,47 @@
+gem "apns", "=0.9.0"
+require "apns"
+
+class Push
+    
+  def self.push_new_alert(notification, token_array)
+
+    notification_id = notification.id
+    message         = notification.message
+    button_name     = notification.btn_name
+    sound           = notification.sound
+    url             = notification.url
+    test_udids      = notification.test_udids
+
+    # apn setting
+    APNS.host = "gateway.push.apple.com"
+    APNS.pem  = "#{app_name}_push_certificate.pem"
+
+    # always overide token_array if test udids exist
+    if token_array.size > 0 and test_udids and test_udids.size > 0 
+      token_array = Token.find_all_by_udid(test_udids).map(&:token).compact
+    end 
+
+    apn_notifications = []    
+    if token_array.size > 0    
+      token_array.each do |token|  
+        apn_notifications << APNS::Notification.new(
+          token, 
+          :alert => {:body => message,"action-loc-key" => button_name}, 
+          :sound => sound, 
+          :other => {:url => url}
+        ) 
+      end     
+
+      APNS.send_notifications(apn_notifications)
+
+      # Log the push
+      ApnLog.create(
+        :notification_id => notification_id, 
+        :log_text        => apn_notifications.inspect, 
+        :utime           => Time.now.to_i
+      )
+    end 
+    
+  end 
+
+end

@@ -6,11 +6,18 @@ Is a gem made to eliminate time waste in writing common code in a new or existin
 
 == Usage
 
+    gem install zing
+    zing -b
+
 It is best to use zing with dindi created project.  Take a look at dindi gem.
+
+== Help
 
 To view zing options:
 
     zing -h
+
+== Example
 
 Create a base CMS:
   

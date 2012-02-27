@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "zing"
-  s.version = "0.2.2"
+  s.version = "0.3.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Samuel Chandra"]
-  s.date = "2012-02-01"
+  s.date = "2012-02-27"
   s.description = "This gem will generate common code for a new or existing Sinatra project"
   s.email = "samuelchandra@yahoo.com"
   s.executables = ["zing"]
@@ -18,7 +18,6 @@ Gem::Specification.new do |s|
     "README.rdoc"
   ]
   s.files = [
-    ".document",
     "Gemfile",
     "Gemfile.lock",
     "LICENSE.txt",
@@ -26,19 +25,27 @@ Gem::Specification.new do |s|
     "Rakefile",
     "VERSION",
     "bin/zing",
-    "images/background-v2.png",
-    "images/background-white.png",
-    "images/bg_footer_bottom.png",
-    "images/bg_footer_top.png",
     "lib/zing.rb",
+    "lib/zing/command_parser.rb",
+    "lib/zing/db_helper.rb",
+    "lib/zing/file_helper.rb",
+    "lib/zing/file_templates/base/models/admin_user.rb.erb",
+    "lib/zing/file_templates/base/routes/cms.rb.erb",
+    "lib/zing/file_templates/base/views/dashboard.haml.erb",
+    "lib/zing/file_templates/base/views/layout.haml.erb",
+    "lib/zing/file_templates/base/views/login.haml.erb",
+    "lib/zing/file_templates/base/views/sidebar.haml.erb",
+    "lib/zing/file_templates/push/models/apn_log.rb.erb",
+    "lib/zing/file_templates/push/models/notification.rb.erb",
+    "lib/zing/file_templates/push/models/token.rb.erb",
+    "lib/zing/file_templates/push/push/push.rb.erb",
     "test/helper.rb",
-    "test/test_zing.rb",
-    "zing.gemspec"
+    "test/test_zing.rb"
   ]
-  s.homepage = "http://github.com/schandra/zing"
+  s.homepage = "http://github.com/samchandra/zing"
   s.licenses = ["MIT"]
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.15"
+  s.rubygems_version = "1.8.10"
   s.summary = "Zing is Sinatra code generator"
 
   if s.respond_to? :specification_version then

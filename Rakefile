@@ -15,12 +15,13 @@ require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "zing"
-  gem.homepage = "http://github.com/schandra/zing"
+  gem.homepage = "http://github.com/samchandra/zing"
   gem.license = "MIT"
   gem.summary = %Q{Zing is Sinatra code generator}
   gem.description = %Q{This gem will generate common code for a new or existing Sinatra project}
   gem.email = "samuelchandra@yahoo.com"
   gem.authors = ["Samuel Chandra"]
+  gem.files = FileList['lib/**/*', 'bin/*', '[A-Z]*', 'test/**/*'].to_a
   gem.executables = ["zing"]
   # dependencies defined in Gemfile
 end

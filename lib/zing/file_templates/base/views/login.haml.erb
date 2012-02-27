@@ -1,0 +1,64 @@
+!!! 5
+%html
+  %head
+    %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end 
+    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
+    %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
+    %link{:href => "http://twitter.github.com/bootstrap/assets/css/bootstrap.css", :rel => "stylesheet", :type => "text/css"}
+    :css
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }   
+
+      #main_image {
+        margin-bottom: 20px;
+      }   
+             
+      #platform_image {
+        margin-top: 20px;
+      }   
+
+  %body
+  
+    .navbar.navbar-fixed-top
+      .navbar-inner
+        .container
+          %a.brand{:href=>"#"}
+            = $APP_NAME + " CMS"
+
+          %form#login_form.navbar-form.pull-right{:action => "/cms/login", :method => "post"}
+            %input#login_username.input-small{:name => "username", :type => "text", :placeholder => "Username"}
+            %input#login_password.input-small{:name => "password", :type => "password", :placeholder => "Password"}
+            %button.btn{:type => "submit"}Sign in
+
+    .container
+      #main_image.row
+        .span12
+          %img{:src => @main_image}
+
+      .row
+        .span12
+          %h2 We build custom mobile applications
+          %p
+            We help our clients create mobile applications. Our focus is on building apps that deliver real-time, contextually relevant information to mobile touch screens. We are experts in using location, augmented reality and push notification. We don't out-source. 
+      #platform_image.row
+        .span3{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/iPhone4Both1.png", :width => "200px", :height => "376px"}
+        .span3{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/Samsung_Nexus_S_FTKAKI.png", :width => "187px", :height => "344px"}
+        .span3{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/Blackberry-AMEXmerchantfind3.png", :width => "230px", :height => "363px"}
+        .span3{:style => "text-align: center"}
+          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/windows_buuuk2.png", :width => "200px", :height => "362px"}
+
+      .row
+        .span12
+          %h2 Platforms
+          %p From iPhone/iPad, to Android, to BlackBerry, to Windows 7: our portfolio of products is testament to our expertise across multiple platforms. Our services extend beyond just developing apps. We can provide a complete infrastructure for deployment, content management and hosting.
+      
+      %hr
+
+      %footer
+        %p
+          = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s

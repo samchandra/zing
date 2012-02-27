@@ -2,108 +2,8 @@
 
 # script to automate creation of cms for a new/old Sinatra project
 require 'ostruct'
-require 'optparse'
-require 'fileutils'
 require 'colorize'
-
-class OptionParser
-
-  def self.parse(args)
-    # The options specified on the command line will be collected in *options*
-    # We set the default value here
-    options = OpenStruct.new
-    options.project_name = nil
-
-    opts = OptionParser.new do |opts|
-      opts.banner = "Usage: zing [options]"
-
-      opts.separator " "
-      opts.separator "Specific options:"
-
-      opts.on("-b", "--base",
-              "Zing base CMS") do |lib|
-        options.base = true
-      end
-
-      opts.on("-p", "--push",
-              "Zing push module on top of base CMS") do |lib|
-        options.push = true
-      end
-
-      opts.on("-m", "--model MODEL_NAME",
-              "Zing CRUD for individual MODEL_NAME, use commas for multiple models") do |ver|
-        if ver.split(",").class == Array
-          options.model = ver.split(",").map(&:strip)
-        elsif ver.class == String
-          options.model = var
-        else
-          options.model = nil
-        end
-      end
-
-      # No argument, shows at tail. This will print an options summary.
-      # Try it and see!
-      opts.on_tail("-h", "--help", "Show this message") do
-        puts opts
-        exit!
-      end
-
-    end
-
-    opts.parse!(args)
-    options
-
-  rescue Exception => e
-    if e.message.match(/invalid option/i) or e.message.match(/missing argument/i)
-      puts "ERROR: #{e.message}".red
-      puts ""
-      puts opts
-    end
-    exit!
-  end
-
-end
-
-class ZingHelper
-  
-  def self.create_directory(dir_path)
-    if File.exist?(dir_path)
-      puts "exists #{dir_path}"
-    else
-      FileUtils.mkdir_p(dir_path)
-      puts "create".green + " #{dir_path}"
-    end
-  end
-
-  def self.create_file(file_path, file_content)
-    if File.exist?(file_path)
-      puts "exists #{file_path}"
-    else
-      File.open("#{file_path}", "w") do |file|
-        file.puts file_content
-      end
-      puts "create".green + " #{file_path}"
-    end
-  end
-
-  def self.connect_db(models_file_path)
-    if File.exist?(models_file_path)
-      # check if db connection can be made
-      require models_file_path
-      if ActiveRecord::Base.connection and ActiveRecord::Base.connected?
-        puts "passed".green + " Database Connection"
-      else
-        puts "errors".red + " Database Connection not exist"
-        exit!
-      end
-    else
-      puts "ERROR: Are you sure DB is properly configured in #{models_file_path}?".red
-      exit!
-    end
-  end
-
-
-end
+require 'zing'
 
 # make sure ARGV has values
 if ARGV.size == 0
@@ -111,11 +11,16 @@ if ARGV.size == 0
 end
 
 # parse option from command line
-options = OptionParser.parse(ARGV)
+options = OpenStruct.new
+begin
+  Zing::CommandParser.parse(ARGV, options)
+rescue Exception => e
+  exit!
+end
 
-# working directory
-project_absolute_dir = FileUtils.pwd
-app_name             = project_absolute_dir.split("/").last
+# default directories path setting
+project_absolute_dir = options.project_absolute_dir
+app_name             = options.app_name
 
 models_directory  = project_absolute_dir + "/models"
 views_directory   = project_absolute_dir + "/views"
@@ -124,7 +29,6 @@ push_directory    = project_absolute_dir + "/push"
 helpers_directory = project_absolute_dir + "/helpers"
 
 scss_directory    = project_absolute_dir + "/public/sass"
-
 css_directory     = project_absolute_dir + "/public/css"
 images_directory  = project_absolute_dir + "/public/images"
 
@@ -140,360 +44,60 @@ end
 # This will be the base CMS, the rest will not function without this
 if options.base
 
-  # copy cms images from gem to the app images directory
-  zing_images = `gem contents zing`.split("\n").select {|e| e.match(/\.png/i)}
-  FileUtils.cp zing_images, images_directory
+  begin
+    puts "Zinging Base CMS"
 
-  # check if database config exist and connection successful
-  ZingHelper.connect_db(project_absolute_dir + "/models.rb")
+    # copy cms images from gem to the app images directory
+    zing_images = `gem contents zing`.split("\n").select {|e| e.match(/\.png/i)}
+    FileUtils.cp zing_images, images_directory
 
-  # create AdminUser table 
-  if ActiveRecord::Base.connection.table_exists?(:admin_users)
-    puts "exists AdminUser Table"
-  else
-     ActiveRecord::Base.connection.create_table :admin_users do |t|
-       t.string :username, :limit => 40, :null => false
-       t.string :password, :limit => 40
-       t.integer :utime, :limit => 16
-       t.timestamps
-    end
-    if ActiveRecord::Base.connection.table_exists?(:admin_users)
-      puts "passed".green + " AdminUser Table Creation"
-    else
-      puts "failed".red + " AdminUser Table Creation"
-      exit!
-    end
-  end
+    # check if database config exist and connection successful
+    Zing::DbHelper.connect_db(project_absolute_dir + "/models.rb")
 
-  # create AdminUser model 
-  admin_user_content = <<-admin_user_content
-class AdminUser < ActiveRecord::Base
-end
-  admin_user_content
-  ZingHelper.create_file("#{models_directory}/admin_user.rb", admin_user_content)
+    # create AdminUser table 
+    Zing::DbHelper.create_admin_user_table
 
-  # create cms routes 
-  cms_content = <<-cms_content
-class Cms < Sinatra::Base
+    # copy_file_templates
+    Zing::FileHelper.copy_file_templates(options, "options_base")
 
-  get '/cms' do
-    if session[:authorized] 
-      redirect '/cms/dashboard'
-    else
-      redirect '/cms/login'
-    end
-  end
-
-  get '/cms/login' do
-    image_array = ["http://www.buuuk.com/wp-content/uploads/2011/08/ST_bannerNEW.png",
-                   "http://www.buuuk.com/wp-content/uploads/2011/04/weatherlah-banner2d.png",
-                   "http://www.buuuk.com/wp-content/uploads/2011/04/buUuk-banner_New2.png"]
-    @main_image = image_array[rand(3)]
-
-    haml :login, :layout => false
-  end
-
-  post '/cms/login' do
-    if params[:username] && params[:password]
-      admin_users = AdminUser.find_all_by_username_and_password(params[:username], params[:password])
-      if admin_users.size > 0 
-        session[:authorized] = true 
-        redirect '/cms/dashboard'
-      end
-    end
-
-    redirect '/cms/login'
-  end
-
-  get '/cms/logout' do
-    session[:authorized] = false
-    redirect '/cms/login'
-  end
-
-  get '/cms/dashboard' do
-    haml :dashboard
+  rescue Exception => e
+    puts "ERROR: #{e.message}".red
+    puts ""
+    exit!
   end
 
 end
-  cms_content
-  ZingHelper.create_file("#{routes_directory}/cms.rb", cms_content)
 
-  # create login.haml
-  login_haml_content = <<-login_haml_content
-!!! 5
-%html
-  %head
-    %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end 
-    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"}
-    %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
-    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "stylesheet", :type => "text/css"}
-    :css
-      body {
-        padding-top: 60px;
-      }
-      .hero-unit {
-        padding: 0;
-        margin-bottom: 10px;
-      }
-
-  %body
-  
-    .topbar
-      .fill
-        .container
-          %a.brand{:href=>"#"}
-            = $APP_NAME + " CMS"
-
-          %form.pull-right{:action => "/cms/login", :method => "post"}
-            %input.input-small{:name => "username", :type => "text", :placeholder => "Username"}
-            %input.input-small{:name => "password", :type => "password", :placeholder => "Password"}
-            %button.btn{:type => "submit"}Sign in
-
-    .container
-      .hero-unit
-        %img{:src => @main_image}
-
-      .row
-        .span16
-          %h2 We build custom mobile applications
-          %p
-            We help our clients create mobile applications. Our focus is on building apps that deliver real-time, contextually relevant information to mobile touch screens. We are experts in using location, augmented reality and push notification. We don't out-source. 
-      .row
-        .span4{:style => "text-align: center"}
-          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/iPhone4Both1.png", :width => "200px", :height => "376px"}
-        .span4{:style => "text-align: center"}
-          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/Samsung_Nexus_S_FTKAKI.png", :width => "187px", :height => "344px"}
-        .span4{:style => "text-align: center"}
-          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/Blackberry-AMEXmerchantfind3.png", :width => "230px", :height => "363px"}
-        .span4{:style => "text-align: center"}
-          %img{:src => "http://www.buuuk.com/wp-content/uploads/2011/03/windows_buuuk2.png", :width => "200px", :height => "362px"}
-
-      .row
-        .span16
-          %h2 Platforms
-          %p From iPhone/iPad, to Android, to BlackBerry, to Windows 7: our portfolio of products is testament to our expertise across multiple platforms. Our services extend beyond just developing apps. We can provide a complete infrastructure for deployment, content management and hosting.
-
-      %footer
-        %p
-          = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s
-
-  login_haml_content
-  ZingHelper.create_file("#{views_directory}/login.haml", login_haml_content)
-
-  # create layout.haml
-  layout_haml_content = <<-layout_haml_content
-!!! 5
-%html 
-  %head
-    %title= if @page_title then "CMS " + @page_title.humanize else "CMS" end
-    %meta{:content => "text/html; charset=utf-8", "http-equiv" => "Content-Type"} 
-    %meta{:content => "NONE,NOARCHIVE", :name => "robots"}
-    %link{:href => "http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css", :rel => "stylesheet", :type => "text/css"}
-    :css
-      body {
-        padding-top: 60px;
-      }
-
-  %body
-
-    .topbar
-      .topbar-inner
-        .container-fluid
-          %a.brand{:href=>"/"}
-            = $APP_NAME + " CMS"            
-          %ul.nav
-            %li.active
-              %a{:href => "/cms/dashboard"}Dashboard
-          %p.pull-right
-            %a{:href => "/cms/logout"}Logout
-
-    .container-fluid
-      .sidebar
-        .well
-          = haml :sidebar
-
-      .content
-        = yield
-
-        %footer
-          %p
-            = "All rights reserved. &copy; BuUuk " + Time.now.year.to_s
-
-  layout_haml_content
-  ZingHelper.create_file("#{views_directory}/layout.haml", layout_haml_content)
-
-  sidebar_haml_content = <<-sidebar_haml_content
-%h5 
-  CMS Modules
-  %ul
-    %li 
-      %a{:href => "#"}Push Notification
-    %li
-      %a{:href => "#"}Collection Items
-  sidebar_haml_content
-  ZingHelper.create_file("#{views_directory}/sidebar.haml", sidebar_haml_content)
-
-  dashboard_haml_content = <<-dashboard_haml_content
-%p
-  This is the dashboard
-  dashboard_haml_content
-  ZingHelper.create_file("#{views_directory}/dashboard.haml", dashboard_haml_content)
-
-end
-
-# PUSH
+# Push
 #
 # create push folder if not exist
 if options.push
 
-  puts "Zinging push CMS"
-  ZingHelper.create_directory(push_directory)
+  begin
+    puts "Zinging push CMS"
 
-  # check if database config exist and connection successful
-  ZingHelper.connect_db(project_absolute_dir + "/models.rb")
+    Zing::FileHelper.create_directory(push_directory)
 
-  # create Token table 
-  if ActiveRecord::Base.connection.table_exists?(:tokens)
-    puts "exists Token Table"
-  else
-     ActiveRecord::Base.connection.create_table :tokens do |t|
-       t.string :udid, :limit => 40, :null => false
-       t.string :owner, :limit => 40
-       t.string :token, :limit => 128, :null => false
-       t.boolean :buuuk, :default => 0
-       t.boolean :valid_udid, :default => 1
-       t.string :carrier
-       t.integer :utime, :limit => 16
-       t.string :network_code, :limit => 12
-       t.string :country_code, :limit => 12
-       t.string :device, :limit => 32
-       t.string :country
-       t.string :version, :limit => 16
-       t.timestamps
-    end
-    if ActiveRecord::Base.connection.table_exists?(:tokens)
-      puts "passed".green + " Token Table Creation"
-    else
-      puts "failed".red + " Token Table Creation"
-      exit!
-    end
+    # check if database config exist and connection successful
+    Zing::DbHelper.connect_db(project_absolute_dir + "/models.rb")
+
+    # create Token Table
+    Zing::DbHelper.create_token_table
+    # create Notification Table
+    Zing::DbHelper.create_notification_table
+    # create ApnLog Table
+    Zing::DbHelper.create_apn_log_table
+
+    # copy file templates
+    Zing::FileHelper.copy_file_templates(options, "options_push")
+
+    # completion
+    puts "Dont forget to place your '".yellow + "#{app_name}_push_certificate.pem".red + "' file in '".yellow + "/push".red + "' folder".yellow
+
+  rescue Exception => e
+    puts "ERROR: #{e.message}".red
+    puts ""
+    exit!
   end
 
-  # create Notification table
-  if ActiveRecord::Base.connection.table_exists?(:notifications)
-    puts "exists Notification Table"
-  else
-     ActiveRecord::Base.connection.create_table :notifications do |t|
-       t.string :message
-       t.string :btn_name, :limit => 64
-       t.string :sound, :limit => 64
-       t.string :url
-       t.string :category, :limit => 64
-       t.string :carrier, :limit => 64
-       t.string :test_udids, :limit => 512
-       t.integer :utime, :limit => 16
-       t.timestamps
-    end
-    if ActiveRecord::Base.connection.table_exists?(:notifications)
-      puts "passed".green + " Notification Table Creation"
-    else
-      puts "failed".red + " Notification Table Creation"
-      exit!
-    end
-  end
-
-  # create ApnLog table
-  if ActiveRecord::Base.connection.table_exists?(:apn_logs)
-    puts "exists ApnLog Table"
-  else
-     ActiveRecord::Base.connection.create_table :apn_logs do |t|
-       t.integer :notification_id
-       t.integer :notification_size, :limit => 16
-       t.text    :log_text
-       t.integer :utime, :limit => 16
-       t.timestamps
-    end
-    if ActiveRecord::Base.connection.table_exists?(:apn_logs)
-      puts "passed".green + " ApnLog Table Creation"
-    else
-      puts "failed".red + " ApnLog Table Creation"
-      exit!
-    end
-  end
-
-  # create Token model
-  token_content = <<-token_class
-class Token < ActiveRecord::Base
-end
-  token_class
-  ZingHelper.create_file("#{models_directory}/token.rb", token_content)
-
-  # create Notification model
-  notification_content = <<-notification_class
-class Notification < ActiveRecord::Base
-end
-  notification_class
-  ZingHelper.create_file("#{models_directory}/notification.rb", notification_content)
-
-  # create ApnLog model
-  apn_log_content = <<-apn_log_class
-class ApnLog < ActiveRecord::Base
-end
-  apn_log_class
-  ZingHelper.create_file("#{models_directory}/apn_log.rb", apn_log_content)
-
-  # create the Push class
-  push_class_content = <<-push_class
-gem "apns", "=0.9.0"
-require "apns"
-
-class Push
-    
-  def self.push_new_alert(notification, token_array)
-
-    notification_id = notification.id
-    message         = notification.message
-    button_name     = notification.btn_name
-    sound           = notification.sound
-    url             = notification.url
-    test_udids      = notification.test_udids
-
-    # apn setting
-    APNS.host = "gateway.push.apple.com"
-    APNS.pem  = "#{app_name}_push_certificate.pem"
-
-    # always overide token_array if test udids exist
-    if token_array.size > 0 and test_udids and test_udids.size > 0 
-      token_array = Token.find_all_by_udid(test_udids).map(&:token).compact
-    end 
-
-    apn_notifications = []    
-    if token_array.size > 0    
-      token_array.each do |token|  
-        apn_notifications << APNS::Notification.new(
-          token, 
-          :alert => {:body => message,"action-loc-key" => button_name}, 
-          :sound => sound, 
-          :other => {:url => url}
-        ) 
-      end     
-
-      APNS.send_notifications(apn_notifications)
-
-      # Log the push
-      ApnLog.create(
-        :notification_id => notification_id, 
-        :log_text        => apn_notifications.inspect, 
-        :utime           => Time.now.to_i
-      )
-    end 
-    
-  end 
-
-end
-  push_class
-  ZingHelper.create_file("#{push_directory}/push.rb", push_class_content)
-
-  # completion
-  puts "Dont forget to place your '".yellow + "#{app_name}_push_certificate.pem".red + "' file in '".yellow + "/push".red + "' folder".yellow
 end
